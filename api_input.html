@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Key Input</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        input {
+            padding: 10px;
+            width: 80%;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enter Your API Key</h1>
+    <input type="text" id="apiKey" placeholder="Enter your API key here">
+    <button onclick="saveApiKey()">Save & Play</button>
+
+    <script>
+        function saveApiKey() {
+            const apiKey = document.getElementById('apiKey').value;
+            if (apiKey) {
+                localStorage.setItem('game_api_key', apiKey);
+                window.location.href = 'main.html';
+            } else {
+                alert('Please enter a valid API key');
+            }
+        }
+    </script>
+</body>
+</html>

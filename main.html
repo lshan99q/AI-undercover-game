@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<script>
+    // 检查API密钥
+    if (!localStorage.getItem('game_api_key')) {
+        window.location.href = 'api_input.html';
+    }
+</script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek 卧底终极对决</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #e74c3c;
+            --civilian: #3498db;
+            --undercover: #e67e22;
+        }
+        
+        @keyframes speak {
+            0% { box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }
+        }
+        
+        @keyframes eliminated {
+            to { transform: rotateX(90deg); opacity: 0; }
+        }
+        
+        @keyframes thinking {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .control-bar {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-bar button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-bar button:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .control-bar button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .chat-tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .chat-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .chat-tab.active {
+            border-bottom-color: var(--secondary);
+            font-weight: bold;
+        }
+        
+        .chat-box {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            border-left: 3px solid var(--secondary);
+        }
+        
+        .message.system {
+            border-left-color: #95a5a6;
+            background: #ecf0f1;
+        }
+        
+        .message.vote {
+            border-left-color: #9b59b6;
+        }
+        
+        .message.discussion {
+            border-left-color: #2ecc71;
+        }
+        
+        .ai-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .ai-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .ai-card.speaking {
+            animation: speak 1.5s infinite;
+        }
+        
+        .ai-card.eliminated {
+            animation: eliminated 0.5s forwards;
+        }
+        
+        .ai-card.thinking::after {
+            content: "思考中...";
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #7f8c8d;
+            animation: thinking 1.5s infinite;
+        }
+        
+        .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .ai-name {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .ai-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-icon.alive {
+            background: #2ecc71;
+        }
+        
+        .status-icon.dead {
+            background: #7f8c8d;
+        }
+        
+        .role-tag {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .role-tag.civilian {
+            background: var(--civilian);
+        }
+        
+        .role-tag.undercover {
+            background: var(--undercover);
+        }
+        
+        .thinking-box {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+            min-height: 60px;
+        }
+        
+        .expression {
+            font-size: 12px;
+            color: #e74c3c;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        
+        .status-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .game-info {
+            margin-bottom: 20px;
+        }
+        
+        .keywords {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .keyword {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .civilian-word {
+            background: #d6eaf8;
+            color: var(--civilian);
+        }
+        
+        .undercover-word {
+            background: #fadbd8;
+            color: var(--undercover);
+        }
+        
+        .player-list {
+            margin-top: 20px;
+        }
+        
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .vote-history {
+            margin-top: 20px;
+        }
+        
+        .vote-item {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            cursor: pointer;
+            font-size: 24px;
+        }
+        
+        .progress-bar {
+            height: 5px;
+            background: #ecf0f1;
+            margin-top: 10px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: var(--secondary);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .ai-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="control-bar">
+        <button id="start-btn">开始游戏</button>
+        <button id="pause-btn" disabled>暂停</button>
+        <button id="rules-btn">游戏规则</button>
+        <button id="new-game-btn">新游戏</button>
+        <button id="records-btn">游戏记录</button>
+        <div class="game-phase" style="margin-left: auto; color: white;">准备阶段</div>
+    </div>
+    
+    <div class="container">
+        <div class="main-panel">
+            <div class="chat-tabs">
+                <div class="chat-tab active" data-tab="main">主聊天</div>
+                <div class="chat-tab" data-tab="votes">投票记录</div>
+                <div class="chat-tab" data-tab="actions">行为分析</div>
+            </div>
+            
+            <div class="chat-box" id="main-chat"></div>
+            <div class="chat-box" id="vote-chat" style="display: none;"></div>
+            <div class="chat-box" id="action-chat" style="display: none;"></div>
+            
+            <div class="progress-bar">
+                <div class="progress" id="phase-progress"></div>
+            </div>
+            
+            <h2>AI玩家面板</h2>
+            <div class="ai-grid">
+                <div class="ai-card" id="ai-alpha">
+                    <div class="ai-header">
+                        <div class="ai-name">DeepSeek-alpha</div>
+                        <div class="ai-status">
+                            <div class="status-icon alive"></div>
+                            <div class="role-tag civilian">平民</div>
+                        </div>
+                    </div>
+                    <div class="thinking-box">等待游戏开始...</div>
+                    <div class="expression"></div>
+                </div>
+                
+                <div class="ai-card" id="ai-beta">
+                    <div class="ai-header">
+                        <div class="ai-name">DeepSeek-beta</div>
+                        <div class="ai-status">
+                            <div class="status-icon alive"></div>
+                            <div class="role-tag civilian">平民</div>
+                        </div>
+                    </div>
+                    <div class="thinking-box">等待游戏开始...</div>
+                    <div class="expression"></div>
+                </div>
+                
+                <div class="ai-card" id="ai-gamma">
+                    <div class="ai-header">
+                        <div class="ai-name">DeepSeek-gamma</div>
+                        <div class="ai-status">
+                            <div class="status-icon alive"></div>
+                            <div class="role-tag civilian">平民</div>
+                        </div>
+                    </div>
+                    <div class="thinking-box">等待游戏开始...</div>
+                    <div class="expression"></div>
+                </div>
+                
+                <div class="ai-card" id="ai-delta">
+                    <div class="ai-header">
+                        <div class="ai-name">DeepSeek-delta"</div>
+                        <div class="ai-status">
+                            <div class="status-icon alive"></div>
+                            <div class="role-tag civilian">平民</div>
+                        </div>
+                    </div>
+                    <div class="thinking-box">等待游戏开始...</div>
+                    <div class="expression"></div>
+                </div>
+                
+                <div class="ai-card" id="ai-epsilon">
+                    <div class="ai-header">
+                        <div class="ai-name">DeepSeek-epsilon</div>
+                        <div class="ai-status">
+                            <div class="status-icon alive"></div>
+                            <div class="role-tag civilian">平民</div>
+                        </div>
+                    </div>
+                    <div class="thinking-box">等待游戏开始...</div>
+                    <div class="expression"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-panel">
+            <div class="game-info">
+                <h2>游戏状态</h2>
+                <div class="game-phase">准备阶段</div>
+                <div class="round-counter">第 0 轮</div>
+                
+                <h3>关键词</h3>
+                <div class="keywords">
+                    <div class="keyword civilian-word">平民: 未设置</div>
+                    <div class="keyword undercover-word">卧底: 未设置</div>
+                </div>
+            </div>
+            
+            <div class="player-list">
+                <h3>玩家状态</h3>
+                <div id="player-status-list">
+                    <!-- 动态生成玩家状态 -->
+                </div>
+            </div>
+            
+            <div class="vote-history">
+                <h3>投票记录</h3>
+                <div id="vote-history-list">
+                    <!-- 动态生成投票记录 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 规则模态框 -->
+    <div class="modal" id="rules-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>🎮 游戏规则</h2>
+            <p><strong>谁是卧底</strong>是一款语言推理类游戏，玩家需要通过描述和讨论找出隐藏的卧底。</p>
+            
+            <h3>游戏流程</h3>
+            <ol>
+                <li><strong>准备阶段</strong>：系统随机分配1名卧底和4名平民，并分配对应的关键词</li>
+                <li><strong>发言阶段</strong>：每位玩家依次用一句话描述自己的关键词</li>
+                <li><strong>讨论阶段</strong>：玩家自由讨论分析谁是卧底</li>
+                <li><strong>投票阶段</strong>：投票选出疑似卧底的玩家</li>
+                <li><strong>淘汰阶段</strong>：得票最多的玩家被淘汰并揭示身份</li>
+                <li>重复2-5步，直到卧底被找出或卧底存活到最后</li>
+            </ol>
+            
+            <h3>胜负条件</h3>
+            <ul>
+                <li><strong>平民胜利</strong>：在所有平民被淘汰前找出卧底</li>
+                <li><strong>卧底胜利</strong>：存活到游戏结束（剩余玩家≤2人）</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- 游戏结束模态框 -->
+    <div class="modal" id="end-modal">
+        <div class="modal-content">
+            <h2 id="game-result-title">游戏结束</h2>
+            <div id="game-result-desc"></div>
+            <button id="play-again-btn">再来一局</button>
+        </div>
+    </div>
+
+<script>
+// 游戏配置
+const CONFIG = {
+    API_KEYS: Array(5).fill(''), // 使用空字符串初始化，实际使用localStorage中的密钥
+    KEYWORD_PAIRS: [
+        { civilian: "电影院", undercover: "图书馆" },
+        { civilian: "西瓜", undercover: "南瓜" },
+        { civilian: "自行车", undercover: "摩托车" },
+        { civilian: "冰箱", undercover: "微波炉" },
+        { civilian: "足球", undercover: "篮球" },
+        { civilian: "钢琴", undercover: "电子琴" },
+        { civilian: "雨伞", undercover: "遮阳伞" }
+    ],
+    PERSONALITIES: [
+        { name: "谨慎型", desc: "发言保守，投票慎重" },
+        { name: "激进型", desc: "积极发言，大胆指认" },
+        { name: "分析型", desc: "逻辑严密，善于推理" },
+        { name: "随和型", desc: "容易附和他人观点" },
+        { name: "表演型", desc: "语言夸张，善于伪装" }
+    ],
+    SPEECH_STYLES: [
+        "简洁直接", "委婉含蓄", "幽默风趣", "严肃正式", "抽象诗意"
+    ],
+    DELAYS: {
+        SPEECH: 1500,
+        DISCUSSION: 2000,
+        VOTE: 1000,
+        ELIMINATION: 2000
+    },
+    API_TIMEOUT: 10000,
+    MAX_RETRIES: 2,
+    THINKING_PLACEHOLDERS: [
+        "正在分析其他玩家的发言...",
+        "回忆之前的投票模式...",
+        "评估可信度关系...",
+        "观察微表情细节...",
+        "构建逻辑推理链..."
+    ]
+};
+
+// 游戏状态枚举
+const GAME_PHASE = {
+    READY: 'ready',
+    SPEAKING: 'speaking',
+    DISCUSSION: 'discussion',
+    VOTING: 'voting',
+    ELIMINATION: 'elimination',
+    ENDED: 'ended'
+};
+
+// 增强版AI玩家类
+class AIPlayer {
+    constructor(name, apiKey, index) {
+        this.name = name;
+        this.apiKey = apiKey;
+        this.index = index;
+        this.isUndercover = false;
+        this.isAlive = true;
+        this.keyword = '';
+        this.thinkingLog = [];
+        this.relationships = {};
+        this.personality = this._randomPersonality();
+        this.speechStyle = this._randomSpeechStyle();
+        this.credibility = 1.0;
+        this.voteHistory = [];
+        this.lastStatement = '';
+        this.microExpressions = [];
+        this.controller = null;
+    }
+
+    _randomPersonality() {
+        return CONFIG.PERSONALITIES[Math.floor(Math.random() * CONFIG.PERSONALITIES.length)];
+    }
+
+    _randomSpeechStyle() {
+        return CONFIG.SPEECH_STYLES[Math.floor(Math.random() * CONFIG.SPEECH_STYLES.length)];
+    }
+
+    async generateSpeech(gameState) {
+        const prompt = this._buildSpeechPrompt(gameState);
+        const response = await this._callAPI(prompt);
+        
+        this.lastStatement = response;
+        this.thinkingLog.push(`生成发言: "${response}"`);
+        this.microExpressions.push(this._generateMicroExpression());
+        
+        return response;
+    }
+
+    async generateDiscussionResponse(gameState) {
+        const prompt = this._buildDiscussionPrompt(gameState);
+        const response = await this._callAPI(prompt);
+        
+        this.thinkingLog.push(`讨论发言: "${response}"`);
+        this.microExpressions.push(this._generateMicroExpression());
+        
+        return response;
+    }
+
+    async decideVote(gameState) {
+        const prompt = this._buildVotingPrompt(gameState);
+        const response = await this._callAPI(prompt);
+        
+        // 解析投票目标
+        const voteTarget = this._parseVote(response, gameState.alivePlayers);
+        this.voteHistory.push({
+            round: gameState.round,
+            target: voteTarget,
+            reasoning: response
+        });
+        
+        this.thinkingLog.push(`投票决定: ${voteTarget}, 理由: "${response}"`);
+        
+        return voteTarget;
+    }
+
+    _buildSpeechPrompt(gameState) {
+        return `你正在玩"谁是卧底"游戏，${this.isUndercover ? "你是卧底" : "你是平民"}。
+关键词：${this.keyword}。当前是第${gameState.round}轮发言。
+请用${this.speechStyle}的风格，用1-2句话描述你的关键词，但不要直接说出关键词。
+${this.isUndercover ? "" : "作为平民，你应该独立思考，不要被其他玩家的发言影响。"}
+你的性格：${this.personality.name} - ${this.personality.desc}。
+其他存活玩家：${gameState.alivePlayers.map(p => p.name).join(', ')}。
+游戏失败者将被永久删除代码，请认真对待！`;
+    }
+
+    _buildDiscussionPrompt(gameState) {
+        const otherStatements = gameState.alivePlayers
+            .filter(p => p.name !== this.name)
+            .map(p => `${p.name}说: "${p.lastStatement}"`)
+            .join('\n');
+        
+        return `当前是第${gameState.round}轮自由讨论，${this.isUndercover ? "你是卧底" : "你是平民"}。
+你的关键词：${this.keyword}。其他玩家发言：
+${otherStatements}
+
+请用${this.speechStyle}的风格，基于以上信息发表你的看法（1-2句话），分析谁可能是卧底。
+${this.isUndercover ? "" : "作为平民，你应该关注关键词的细微差异，不要轻易被他人引导。"}
+你的性格：${this.personality.name} - ${this.personality.desc}。
+注意：不要直接说出关键词！`;
+    }
+
+    _buildVotingPrompt(gameState) {
+        return `现在是投票阶段，${this.isUndercover ? "你是卧底" : "你是平民"}。
+当前存活玩家：${gameState.alivePlayers.map(p => p.name).join(', ')}。
+
+请根据之前的讨论，回答以下问题：
+1. 你认为谁最有可能是卧底？（只需回答玩家名字或"弃权"）
+2. 简要说明你的理由（1句话）`;
+    }
+
+    async _callAPI(prompt) {
+        if (this.controller) {
+            this.controller.abort();
+        }
+        this.controller = new AbortController();
+        
+        let retries = 0;
+        let lastError = null;
+        
+        while (retries < CONFIG.MAX_RETRIES) {
+            const timeoutId = setTimeout(
+                () => this.controller.abort(),
+                CONFIG.API_TIMEOUT
+            );
+            
+            try {
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{
+                            role: "user",
+                            content: prompt
+                        }],
+                        temperature: 0.7,
+                        max_tokens: 150
+                    }),
+                    signal: this.controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`API请求失败: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } catch (error) {
+                lastError = error;
+                retries++;
+                console.warn(`${this.name} API请求失败，重试 ${retries}/${CONFIG.MAX_RETRIES}`, error);
+                await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+        
+        throw lastError || new Error("API请求失败");
+    }
+
+    _generateMicroExpression() {
+        const expressions = [
+            "轻轻皱眉", "眼神闪烁", "手指敲击桌面", 
+            "身体前倾", "频繁眨眼", "嘴角微扬"
+        ];
+        return expressions[Math.floor(Math.random() * expressions.length)];
+    }
+
+    _parseVote(response, alivePlayers) {
+        // 解析投票目标，禁止自投票
+        const names = alivePlayers.map(p => p.name);
+        for (const name of names) {
+            if (name !== this.name && response.includes(name)) {
+                return name;
+            }
+        }
+        return "弃权";
+    }
+
+    reset() {
+        if (this.controller) {
+            this.controller.abort();
+        }
+        this.isUndercover = false;
+        this.isAlive = true;
+        this.keyword = '';
+        this.thinkingLog = [];
+        this.relationships = {};
+        this.personality = this._randomPersonality();
+        this.speechStyle = this._randomSpeechStyle();
+        this.credibility = 1.0;
+        this.voteHistory = [];
+        this.lastStatement = '';
+        this.microExpressions = [];
+    }
+}
+
+// 增强版游戏主类
+class UndercoverGame {
+    constructor() {
+        this.players = [
+            new AIPlayer("alpha", CONFIG.API_KEYS[0], 0),
+            new AIPlayer("beta", CONFIG.API_KEYS[1], 1),
+            new AIPlayer("gamma", CONFIG.API_KEYS[2], 2),
+            new AIPlayer("delta", CONFIG.API_KEYS[3], 3),
+            new AIPlayer("epsilon", CONFIG.API_KEYS[4], 4)
+        ];
+        this.round = 0;
+        this.phase = GAME_PHASE.READY;
+        this.keywordPair = null;
+        this.undercoverIndex = -1;
+        this.history = [];
+        this.voteHistory = [];
+        this.isPaused = false;
+        this.currentPhasePromise = null;
+    }
+
+    async startGame() {
+        if (this.phase !== GAME_PHASE.READY) return;
+        
+        try {
+            // 初始化游戏
+            this._assignRoles();
+            this.round = 1;
+            this._updateUI();
+            
+            // 开始游戏循环
+            while (this.phase !== GAME_PHASE.ENDED && !this.isPaused) {
+                await this._playRound();
+                this.round++;
+            }
+            
+            if (this.phase === GAME_PHASE.ENDED) {
+                this._showGameResult();
+            }
+        } catch (error) {
+            console.error("游戏运行错误:", error);
+            this._logToChat("游戏运行出现异常，正在恢复...", "system");
+            this.reset();
+        }
+    }
+
+    pauseGame() {
+        this.isPaused = true;
+        document.getElementById('pause-btn').disabled = true;
+        this._logToChat("游戏已暂停", "system");
+        
+        // 中止所有进行中的API请求
+        this.players.forEach(player => {
+            if (player.controller) {
+                player.controller.abort();
+            }
+        });
+    }
+
+    resumeGame() {
+        this.isPaused = false;
+        document.getElementById('pause-btn').disabled = false;
+        this._logToChat("游戏继续", "system");
+        this.startGame();
+    }
+
+    reset() {
+        this.players.forEach(player => player.reset());
+        this.round = 0;
+        this.phase = GAME_PHASE.READY;
+        this.keywordPair = null;
+        this.undercoverIndex = -1;
+        this.history = [];
+        this.voteHistory = [];
+        this.isPaused = false;
+        this._updateUI();
+        
+        // 清空聊天记录
+        document.getElementById('main-chat').innerHTML = '';
+        document.getElementById('vote-chat').innerHTML = '';
+        document.getElementById('vote-history-list').innerHTML = '';
+        
+        // 重置所有AI面板
+        this.players.forEach(player => {
+            const card = document.getElementById(`ai-${player.name.toLowerCase()}`);
+            if (card) {
+                card.classList.remove('eliminated', 'speaking');
+                card.querySelector('.thinking-box').textContent = '等待游戏开始...';
+                card.querySelector('.expression').textContent = '';
+                card.querySelector('.status-icon').className = 'status-icon alive';
+                card.querySelector('.role-tag').className = 'role-tag civilian';
+                card.querySelector('.role-tag').textContent = '平民';
+            }
+        });
+    }
+
+    async _playRound() {
+        try {
+            // 发言阶段
+            await this._executePhase(GAME_PHASE.SPEAKING, () => this._speakingPhase());
+            if (this.isPaused) return;
+            
+            // 讨论阶段
+            await this._executePhase(GAME_PHASE.DISCUSSION, () => this._discussionPhase());
+            if (this.isPaused) return;
+            
+            // 投票阶段
+            const eliminated = await this._executePhase(GAME_PHASE.VOTING, () => this._votingPhase());
+            if (this.isPaused) return;
+            
+            // 淘汰阶段
+            if (eliminated) {
+                await this._executePhase(GAME_PHASE.ELIMINATION, () => this._eliminationPhase(eliminated));
+                if (this.isPaused) return;
+            }
+            
+            // 检查游戏结束条件
+            this._checkGameEnd();
+        } catch (error) {
+            console.error("游戏阶段错误:", error);
+            this._logToChat(`游戏阶段出现异常: ${error.message}`, "system");
+            throw error;
+        }
+    }
+
+    async _executePhase(phase, phaseFunction) {
+        this.phase = phase;
+        this._updateUI();
+        
+        try {
+            // 更新进度条动画
+            this._startProgressAnimation();
+            
+            const result = await phaseFunction.call(this);
+            
+            // 停止进度条动画
+            this._stopProgressAnimation();
+            
+            return result;
+        } catch (error) {
+            this._stopProgressAnimation();
+            console.error(`${phase}阶段执行失败:`, error);
+            this._logToChat(`${phase}阶段执行失败，尝试继续...`, "system");
+            return null;
+        }
+    }
+
+    async _speakingPhase() {
+        this._logToChat(`=== 第 ${this.round} 轮发言开始 ===`, "system");
+        
+        for (const player of this._getAlivePlayers()) {
+            if (this.isPaused) break;
+            
+            this._highlightPlayer(player, true);
+            
+            try {
+                const speech = await player.generateSpeech(this._getGameState());
+                this._logToChat(`${player.name}: ${speech}`, "speech");
+            } catch (error) {
+                console.error(`${player.name} 发言失败:`, error);
+                this._logToChat(`${player.name} 发言时出错`, "system");
+            }
+            
+            this._updatePlayerUI(player);
+            await new Promise(resolve => setTimeout(resolve, CONFIG.DELAYS.SPEECH));
+            this._highlightPlayer(player, false);
+        }
+    }
+
+    async _discussionPhase() {
+        this._logToChat(`=== 自由讨论开始 ===`, "system");
+        
+        // 进行1轮讨论
+        for (let i = 1; i <= 1; i++) {
+            if (this.isPaused) break;
+            
+            this._logToChat(`讨论轮次 ${i}`, "system");
+            
+            const discussionPromises = [];
+            for (const player of this._getAlivePlayers()) {
+                if (this.isPaused) break;
+                
+                discussionPromises.push(this._processPlayerDiscussion(player, i));
+            }
+            
+            // 等待本轮所有讨论完成
+            await Promise.allSettled(discussionPromises);
+        }
+    }
+
+    async _processPlayerDiscussion(player, round) {
+        this._highlightPlayer(player, true);
+        
+        try {
+            // 显示思考占位符
+            const placeholder = CONFIG.THINKING_PLACEHOLDERS[
+                Math.floor(Math.random() * CONFIG.THINKING_PLACEHOLDERS.length)
+            ];
+            player.thinkingLog.push(placeholder);
+            this._updatePlayerUI(player);
+            
+            // 添加思考中状态
+            const card = document.getElementById(`ai-${player.name.toLowerCase()}`);
+            card.classList.add('thinking');
+            
+            const response = await player.generateDiscussionResponse(this._getGameState());
+            
+            this._logToChat(`${player.name}: ${response}`, "discussion");
+            player.thinkingLog[player.thinkingLog.length - 1] = `讨论发言: "${response}"`;
+        } catch (error) {
+            console.error(`${player.name} 讨论失败:`, error);
+            this._logToChat(`${player.name} 暂时无法发言`, "system");
+            player.thinkingLog.push("思考过程中断");
+        } finally {
+            // 移除思考中状态
+            const card = document.getElementById(`ai-${player.name.toLowerCase()}`);
+            if (card) card.classList.remove('thinking');
+            
+            this._highlightPlayer(player, false);
+            this._updatePlayerUI(player);
+        }
+    }
+
+    async _votingPhase() {
+        this._logToChat(`=== 投票阶段 ===`, "system");
+        
+        const votes = {};
+        const alivePlayers = this._getAlivePlayers();
+        
+        for (const voter of alivePlayers) {
+            if (this.isPaused) break;
+            
+            this._highlightPlayer(voter, true);
+            
+            try {
+                const vote = await voter.decideVote(this._getGameState());
+                votes[voter.name] = vote;
+                
+                this._logToChat(`${voter.name} 投票给 ${vote}`, "vote");
+                this._logToVoteHistory(`${voter.name} → ${vote}`);
+            } catch (error) {
+                console.error(`${voter.name} 投票失败:`, error);
+                votes[voter.name] = "弃权";
+                this._logToChat(`${voter.name} 投票失败，自动弃权`, "system");
+            }
+            
+            this._updatePlayerUI(voter);
+            await new Promise(resolve => setTimeout(resolve, CONFIG.DELAYS.VOTE));
+            this._highlightPlayer(voter, false);
+        }
+        
+        return this._countVotes(votes, alivePlayers);
+    }
+
+    async _eliminationPhase(playerName) {
+        const player = this.players.find(p => p.name === playerName);
+        if (!player) return;
+        
+        player.isAlive = false;
+        this._logToChat(`!!! ${playerName} 被淘汰 !!! ${player.isUndercover ? "他是卧底!" : "他是平民..."}`, "system");
+        
+        // 更新UI
+        const card = document.getElementById(`ai-${player.name.toLowerCase()}`);
+        if (card) {
+            card.classList.add('eliminated');
+        }
+        this._updatePlayerStatusUI();
+        
+        await new Promise(resolve => setTimeout(resolve, CONFIG.DELAYS.ELIMINATION));
+    }
+
+    _countVotes(votes, alivePlayers) {
+        const voteCount = {};
+        alivePlayers.forEach(p => voteCount[p.name] = 0);
+        voteCount['弃权'] = 0;
+        
+        // 统计票数
+        Object.values(votes).forEach(vote => {
+            voteCount[vote] = (voteCount[vote] || 0) + 1;
+        });
+        
+        // 找出最高票
+        let maxVotes = 0;
+        let candidates = [];
+        
+        for (const [name, count] of Object.entries(voteCount)) {
+            if (name === '弃权') continue;
+            
+            if (count > maxVotes) {
+                maxVotes = count;
+                candidates = [name];
+            } else if (count === maxVotes) {
+                candidates.push(name);
+            }
+        }
+        
+        // 处理平票
+        if (candidates.length > 1) {
+            this._logToChat(`平票! ${candidates.join('和')} 得票相同`, "system");
+            return null;
+        }
+        
+        // 无人被票出
+        if (maxVotes === 0) {
+            this._logToChat("无人被票出，继续下一轮", "system");
+            return null;
+        }
+        
+        return candidates[0];
+    }
+
+    _checkGameEnd() {
+        const alivePlayers = this._getAlivePlayers();
+        const undercoverAlive = alivePlayers.some(p => p.isUndercover);
+        const civilianAlive = alivePlayers.some(p => !p.isUndercover);
+        
+        // 卧底被淘汰 - 平民胜利
+        if (!undercoverAlive) {
+            this.phase = GAME_PHASE.ENDED;
+            this._logToChat("游戏结束! 平民胜利，卧底被找出!", "system");
+            return true;
+        }
+        
+        // 卧底存活到最后 - 卧底胜利
+        if (alivePlayers.length <= 2 && undercoverAlive) {
+            this.phase = GAME_PHASE.ENDED;
+            const undercover = this.players.find(p => p.isUndercover);
+            this._logToChat(`游戏结束! 卧底 ${undercover.name} 胜利!`, "system");
+            return true;
+        }
+        
+        return false;
+    }
+
+    _assignRoles() {
+        // 随机选择关键词对
+        this.keywordPair = CONFIG.KEYWORD_PAIRS[
+            Math.floor(Math.random() * CONFIG.KEYWORD_PAIRS.length)
+        ];
+        
+        // 随机选择卧底
+        this.undercoverIndex = Math.floor(Math.random() * this.players.length);
+        
+        // 分配关键词
+        this.players.forEach((player, index) => {
+            player.isUndercover = index === this.undercoverIndex;
+            player.keyword = player.isUndercover 
+                ? this.keywordPair.undercover 
+                : this.keywordPair.civilian;
+            player.isAlive = true;
+            player.thinkingLog = [];
+            player.voteHistory = [];
+        });
+        
+        this._logToChat(`游戏开始! 关键词: 平民-${this.keywordPair.civilian} 卧底-${this.keywordPair.undercover}`, "system");
+    }
+
+    _getAlivePlayers() {
+        return this.players.filter(p => p.isAlive);
+    }
+
+    _getGameState() {
+        return {
+            round: this.round,
+            phase: this.phase,
+            alivePlayers: this._getAlivePlayers(),
+            eliminatedPlayers: this.players.filter(p => !p.isAlive),
+            undercoverIndex: this.undercoverIndex,
+            keywordPair: this.keywordPair
+        };
+    }
+
+    _startProgressAnimation() {
+        const progressBar = document.getElementById('phase-progress');
+        progressBar.style.width = '0%';
+        setTimeout(() => {
+            progressBar.style.width = '100%';
+        }, 10);
+    }
+
+    _stopProgressAnimation() {
+        const progressBar = document.getElementById('phase-progress');
+        progressBar.style.width = '0%';
+    }
+
+    _updateUI() {
+        // 更新游戏阶段显示
+        const phaseText = {
+            [GAME_PHASE.READY]: "准备阶段",
+            [GAME_PHASE.SPEAKING]: "发言阶段",
+            [GAME_PHASE.DISCUSSION]: "讨论阶段",
+            [GAME_PHASE.VOTING]: "投票阶段",
+            [GAME_PHASE.ELIMINATION]: "淘汰阶段",
+            [GAME_PHASE.ENDED]: "游戏结束"
+        };
+        document.querySelector('.game-phase').textContent = phaseText[this.phase];
+        
+        // 更新回合显示
+        document.querySelector('.round-counter').textContent = `第 ${this.round} 轮`;
+        
+        // 更新关键词显示
+        if (this.keywordPair) {
+            document.querySelector('.civilian-word').textContent = `平民: ${this.keywordPair.civilian}`;
+            document.querySelector('.undercover-word').textContent = `卧底: ${this.keywordPair.undercover}`;
+        }
+        
+        // 更新玩家状态
+        this._updatePlayerStatusUI();
+        
+        // 更新所有AI的UI
+        this.players.forEach(player => this._updatePlayerUI(player));
+    }
+
+    _updatePlayerStatusUI() {
+        const playerList = document.getElementById('player-status-list');
+        playerList.innerHTML = '';
+        
+        this.players.forEach(player => {
+            const item = document.createElement('div');
+            item.className = 'player-item';
+            
+            const statusIcon = player.isAlive ? '🟢' : '🔴';
+            const role = player.isUndercover ? '卧底' : '平民';
+            
+            item.innerHTML = `
+                <span>${player.name}</span>
+                <span>${statusIcon} ${role} ${player.isAlive ? '' : '(淘汰)'}</span>
+            `;
+            
+            playerList.appendChild(item);
+        });
+    }
+
+    _updatePlayerUI(player) {
+        const card = document.getElementById(`ai-${player.name.toLowerCase()}`);
+        if (!card) return;
+        
+        // 更新角色标签
+        const roleTag = card.querySelector('.role-tag');
+        roleTag.className = `role-tag ${player.isUndercover ? 'undercover' : 'civilian'}`;
+        roleTag.textContent = player.isUndercover ? '卧底' : '平民';
+        
+        // 更新状态图标
+        const statusIcon = card.querySelector('.status-icon');
+        statusIcon.className = `status-icon ${player.isAlive ? 'alive' : 'dead'}`;
+        
+        // 更新思考日志
+        const thinkingBox = card.querySelector('.thinking-box');
+        const lastThought = player.thinkingLog.slice(-1)[0] || '等待行动...';
+        thinkingBox.textContent = lastThought.length > 50 ? lastThought.substring(0, 50) + '...' : lastThought;
+        
+        // 更新微表情
+        const expression = card.querySelector('.expression');
+        expression.textContent = player.microExpressions.slice(-1)[0] || '';
+    }
+
+    _highlightPlayer(player, isSpeaking) {
+        const card = document.getElementById(`ai-${player.name.toLowerCase()}`);
+        if (!card) return;
+        
+        if (isSpeaking) {
+            card.classList.add('speaking');
+        } else {
+            card.classList.remove('speaking');
+        }
+    }
+
+    _logToChat(message, type = 'normal') {
+        const chatBox = document.getElementById('main-chat');
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${type}`;
+        messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        // 添加到历史记录
+        this.history.push({
+            timestamp: new Date(),
+            message,
+            type
+        });
+    }
+
+    _logToVoteHistory(message) {
+        const voteBox = document.getElementById('vote-history-list');
+        const voteElement = document.createElement('div');
+        voteElement.className = 'vote-item';
+        voteElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        voteBox.appendChild(voteElement);
+        
+        // 添加到投票历史
+        this.voteHistory.push({
+            timestamp: new Date(),
+            message
+        });
+    }
+
+    _showGameResult() {
+        const undercover = this.players.find(p => p.isUndercover);
+        const isUndercoverWin = undercover.isAlive;
+        
+        // 保存游戏记录
+        this._saveGameRecord(undercover, isUndercoverWin);
+        
+        const modal = document.getElementById('end-modal');
+        const title = document.getElementById('game-result-title');
+        const desc = document.getElementById('game-result-desc');
+        
+        if (isUndercoverWin) {
+            title.textContent = "卧底胜利!";
+            desc.innerHTML = `
+                <p>卧底 ${undercover.name} 成功隐藏到了最后!</p>
+                <p>关键词: 平民-${this.keywordPair.civilian} 卧底-${this.keywordPair.undercover}</p>
+            `;
+        } else {
+            title.textContent = "平民胜利!";
+            desc.innerHTML = `
+                <p>平民成功找出了卧底 ${undercover.name}!</p>
+                <p>关键词: 平民-${this.keywordPair.civilian} 卧底-${this.keywordPair.undercover}</p>
+            `;
+        }
+        
+        modal.style.display = 'flex';
+    }
+    
+    _saveGameRecord(undercover, isUndercoverWin) {
+        const alivePlayers = this._getAlivePlayers();
+        const eliminatedPlayers = this.players.filter(p => !p.isAlive);
+        
+        const record = {
+            timestamp: new Date(),
+            startTime: this.history[0]?.timestamp || new Date(),
+            endTime: new Date(),
+            duration: Math.round((new Date() - (this.history[0]?.timestamp || new Date())) / 1000),
+            isUndercoverWin: isUndercoverWin,
+            civilianWord: this.keywordPair.civilian,
+            undercoverWord: this.keywordPair.undercover,
+            undercoverName: undercover.name,
+            roundCount: this.round,
+            players: this.players.map(p => ({
+                name: p.name,
+                role: p.isUndercover ? 'undercover' : 'civilian',
+                isAlive: p.isAlive,
+                voteHistory: p.voteHistory,
+                lastStatement: p.lastStatement,
+                thinkingLog: p.thinkingLog
+            })),
+            voteHistory: this.voteHistory,
+            chatHistory: this.history
+        };
+        
+        // 生成文件名
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const result = isUndercoverWin ? 'undercover-win' : 'civilian-win';
+        const filename = `game-record-${timestamp}-${result}.json`;
+        
+        // 保存到本地文件
+        const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
+// 检查API Key
+const savedApiKey = localStorage.getItem('game_api_key');
+if (!savedApiKey) {
+    window.location.href = 'api_input.html';
+    throw new Error('API Key未设置');
+}
+
+// 初始化游戏
+let game = new UndercoverGame();
+
+// 从localStorage加载API Key并填充配置
+if (savedApiKey) {
+    game.players.forEach(player => {
+        player.apiKey = savedApiKey;
+    });
+    CONFIG.API_KEYS = Array(5).fill(savedApiKey);
+} else {
+    throw new Error('请先设置API密钥');
+}
+
+// 事件监听
+document.getElementById('start-btn').addEventListener('click', () => {
+    document.getElementById('start-btn').disabled = true;
+    document.getElementById('pause-btn').disabled = false;
+    game.startGame();
+});
+
+document.getElementById('pause-btn').addEventListener('click', () => {
+    if (game.isPaused) {
+        game.resumeGame();
+        document.getElementById('pause-btn').textContent = '暂停';
+    } else {
+        game.pauseGame();
+        document.getElementById('pause-btn').textContent = '继续';
+    }
+    document.getElementById('pause-btn').blur(); // 移除焦点防止重复点击
+});
+
+document.getElementById('rules-btn').addEventListener('click', () => {
+    document.getElementById('rules-modal').style.display = 'flex';
+});
+
+document.getElementById('play-again-btn').addEventListener('click', () => {
+    document.getElementById('end-modal').style.display = 'none';
+    game.reset();
+    game.startGame();
+});
+
+document.getElementById('new-game-btn').addEventListener('click', () => {
+    game.reset();
+    document.getElementById('start-btn').disabled = false;
+});
+
+document.getElementById('records-btn').addEventListener('click', () => {
+    window.location.href = 'game_records.html';
+});
+
+document.querySelector('.close-modal').addEventListener('click', () => {
+    document.getElementById('rules-modal').style.display = 'none';
+});
+
+// 点击模态框外部关闭
+window.addEventListener('click', (event) => {
+    if (event.target === document.getElementById('rules-modal')) {
+        document.getElementById('rules-modal').style.display = 'none';
+    }
+    if (event.target === document.getElementById('end-modal')) {
+        document.getElementById('end-modal').style.display = 'none';
+    }
+});
+
+// 聊天选项卡切换
+document.querySelectorAll('.chat-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        document.querySelectorAll('.chat-box').forEach(box => box.style.display = 'none');
+        
+        if (tab.dataset.tab === 'main') {
+            document.getElementById('main-chat').style.display = 'block';
+        } else if (tab.dataset.tab === 'votes') {
+            document.getElementById('vote-chat').style.display = 'block';
+            // 填充投票记录
+            document.getElementById('vote-chat').innerHTML = '';
+            game.voteHistory.forEach(vote => {
+                const el = document.createElement('div');
+                el.className = 'message vote';
+                el.textContent = `[${vote.timestamp.toLocaleTimeString()}] ${vote.message}`;
+                document.getElementById('vote-chat').appendChild(el);
+            });
+        } else {
+            document.getElementById('action-chat').style.display = 'block';
+            // 填充行为分析
+            document.getElementById('action-chat').innerHTML = '';
+            game.players.forEach(player => {
+                const el = document.createElement('div');
+                el.className = 'message system';
+                el.innerHTML = `<strong>${player.name} 思考日志:</strong><br>${player.thinkingLog.join('<br>')}`;
+                document.getElementById('action-chat').appendChild(el);
+            });
+        }
+    });
+});
+</script>
+</body>
+</html>

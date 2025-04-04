@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>游戏记录</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .record {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .record-result {
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: white;
+        }
+        .civilian-win {
+            background: #3498db;
+        }
+        .undercover-win {
+            background: #e67e22;
+        }
+        .record-details {
+            margin-top: 10px;
+        }
+        .keywords {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .keyword {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .civilian-word {
+            background: #d6eaf8;
+            color: #3498db;
+        }
+        .undercover-word {
+            background: #fadbd8;
+            color: #e67e22;
+        }
+        .player-list {
+            margin-top: 15px;
+        }
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .chat-log {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .chat-message {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #e74c3c;
+        }
+        .back-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>游戏历史记录</h1>
+    <div id="records-container"></div>
+    <button class="back-btn" onclick="window.location.href='main.html'">返回游戏</button>
+
+    <script src="data/game_records.js"></script>
+    <script>
+        function loadRecords() {
+            const records = loadGameRecords();
+            const container = document.getElementById('records-container');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<p>暂无游戏记录</p>';
+                return;
+            }
+            
+            records.reverse().forEach(record => {
+                const recordEl = document.createElement('div');
+                recordEl.className = 'record';
+                
+                const players = record.players || [];
+                const alivePlayers = players.filter(p => p.isAlive);
+                const undercover = players.find(p => p.role === 'undercover');
+                
+                recordEl.innerHTML = `
+                    <div class="record-header">
+                        <div>${new Date(record.timestamp).toLocaleString()}</div>
+                        <div class="record-result ${record.isUndercoverWin ? 'undercover-win' : 'civilian-win'}">
+                            ${record.isUndercoverWin ? '卧底胜利' : '平民胜利'}
+                        </div>
+                    </div>
+                    <div class="record-details">
+                        <div>游戏时长: ${record.duration}秒</div>
+                        <div>回合数: ${record.roundCount}</div>
+                        <div>卧底: ${undercover?.name || '未知'}</div>
+                        
+                        <div class="keywords">
+                            <div class="keyword civilian-word">平民: ${record.civilianWord}</div>
+                            <div class="keyword undercover-word">卧底: ${record.undercoverWord}</div>
+                        </div>
+                        
+                        <div class="player-list">
+                            <h3>玩家状态</h3>
+                            ${players.map(p => `
+                                <div class="player-item">
+                                    <span>${p.name}</span>
+                                    <span>${p.role === 'undercover' ? '卧底' : '平民'} ${p.isAlive ? '存活' : '淘汰'}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        ${record.chatHistory ? `
+                        <div class="chat-log">
+                            <h3>最后几条聊天记录</h3>
+                            ${record.chatHistory.slice(-5).map(msg => `
+                                <div class="chat-message">
+                                    [${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.message}
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(recordEl);
+            });
+        }
+        
+        // 页面加载时显示记录
+        window.addEventListener('DOMContentLoaded', loadRecords);
+    </script>
+</body>
+</html>
