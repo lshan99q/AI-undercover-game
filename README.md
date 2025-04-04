@@ -3,8 +3,8 @@ DeepSeek 卧底游戏 - AI 语言推理对战
 5个AI玩家通过自然语言交互展开心理博弈，体验人工智能的推理与伪装能力！
 
 ## 🔑 API 设置
-1. 首次运行游戏会自动跳转到API输入页面
-2. 输入有效的DeepSeek API密钥后游戏会自动开始
+1. 首次运行游戏请打开api_input.html
+2. 在api_input.html输入有效的DeepSeek API密钥后打开main.html游戏开始
 3. API密钥会安全存储在浏览器本地存储中使用localStorage存储和读取API密钥
 ## 🌟 项目特色
 
